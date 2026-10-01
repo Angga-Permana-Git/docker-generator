@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Konfigurasi - Docker Stack Generator</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Konfigurasi Stack</h1>
+            <p class="subtitle">Konfirmasi deteksi framework dan finalisasi konfigurasi.</p>
+        </header>
+
+        <section class="card">
+            <div class="detection">
+                <h2>Deteksi Framework</h2>
+                <table>
+                    <tr><td><strong>Framework</strong></td><td id="fwLabel"></td></tr>
+                    <tr><td><strong>Type</strong></td><td id="fwType"></td></tr>
+                    <tr><td><strong>Default Port</strong></td><td id="fwPort"></td></tr>
+                    <tr><td><strong>DB Suggestion</strong></td><td id="fwDb"></td></tr>
+                </table>
+            </div>
+
+            <form id="confirmForm">
+                <input type="hidden" name="session_id" id="sessionId">
+                <input type="hidden" name="framework" id="fwName">
+                <input type="hidden" name="source_dir" id="sourceDir">
+
+                <h2>Informasi Aplikasi</h2>
+                <div class="field">
+                    <label for="app_name">App Name</label>
+                    <input type="text" id="app_name" name="app_name" required>
+                </div>
+                <div class="field">
+                    <label for="domain">Domain</label>
+                    <input type="text" id="domain" name="domain" value="localhost">
+                </div>
+                <div class="field">
+                    <label for="port">Port</label>
+                    <input type="number" id="port" name="port" required>
+                </div>
+
+                <h2>Database</h2>
+                <div class="field">
+                    <label for="db_type">Database Type</label>
+                    <select id="db_type" name="db_type">
+                        <option value="none">None</option>
+                        <option value="postgresql">PostgreSQL</option>
+                        <option value="mysql">MySQL</option>
+                        <option value="mariadb">MariaDB</option>
+                    </select>
+                </div>
+
+                <h2>SSO Configuration</h2>
+                <div class="field">
+                    <label class="checkbox">
+                        <input type="checkbox" id="enable_sso" name="enable_sso">
+                        Enable SSO
+                    </label>
+                </div>
+                <div id="ssoFields" style="display:none">
+                    <div class="field">
+                        <label for="sso_provider">Provider</label>
+                        <select id="sso_provider" name="sso_provider">
+                            <option value="keycloak">Keycloak</option>
+                            <option value="auth0">Auth0</option>
+                            <option value="azuread">Azure AD</option>
+                            <option value="generic">Generic OIDC</option>
+                            <option value="genericpmk">Generic OIDC (Custom)</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="sso_client_id">Client ID</label>
+                        <input type="text" id="sso_client_id" name="sso_client_id">
+                    </div>
+                    <div class="field">
+                        <label for="sso_client_secret">Client Secret</label>
+                        <input type="password" id="sso_client_secret" name="sso_client_secret">
+                    </div>
+                    <div class="field" id="tenantField" style="display:none">
+                        <label for="sso_tenant_id">Tenant ID (Azure)</label>
+                        <input type="text" id="sso_tenant_id" name="sso_tenant_id">
+                    </div>
+                    <div class="field" id="domainField" style="display:none">
+                        <label for="sso_domain">OIDC Domain</label>
+                        <input type="text" id="sso_domain" name="sso_domain">
+                    </div>
+                </div>
+
+                <h2>AI Enhancement (Optional)</h2>
+                <div class="field">
+                    <label class="checkbox">
+                        <input type="checkbox" id="enable_ai" name="enable_ai">
+                        Enable AI Analysis
+                    </label>
+                </div>
+                <div class="field">
+                    <label for="ai_provider">AI Provider</label>
+                    <select id="ai_provider" name="ai_provider">
+                        <option value="openai">OpenAI</option>
+                        <option value="anthropic">Anthropic</option>
+                    </select>
+                </div>
+                <div id="aiKeyField" style="display:none">
+                    <div class="field">
+                        <label for="ai_api_key">AI API Key</label>
+                        <input type="password" id="ai_api_key" name="ai_api_key">
+                    </div>
+                </div>
+
+                <button type="submit">Generate Stack</button>
+            </form>
+
+            <div id="result" style="display:none">
+                <h2>Hasil</h2>
+                <a id="downloadLink" href="#">Download ZIP</a>
+                <p id="aiStatus"></p>
+            </div>
+        </section>
+    </div>
+
+    <script src="/static/confirm.js"></script>
+</body>
+</html>

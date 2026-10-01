@@ -1,0 +1,38 @@
+# ============================================================
+# Dockerfile - Node/Express - {{ app_name }}
+# Security hardened: non-root user, pinned versions, tini
+# ============================================================
+
+FROM node:20-alpine
+
+# Install tini as init system
+RUN apk add --no-cache tini
+
+WORKDIR /app
+
+# Copy dependency files first for layer caching
+COPY package*.json ./
+
+# Install production dependencies only
+RUN npm ci --omit=dev && rm -rf ~/.npm
+
+# Copy source code
+COPY . .
+
+# Create non-root user (UID 1001)
+RUN addgroup -g 1001 -S appgroup && \
+    adduser -u 1001 -S appuser -G appgroup
+
+# Set proper permissions
+RUN chown -R appuser:appgroup /app && \
+    chmod -R 750 /app
+
+# Switch to non-root user
+USER appuser
+
+ENV NODE_ENV=production
+
+EXPOSE {{ port }}
+
+ENTRYPOINT ["/sbin/tini", "--"]
+CMD ["node", "server.js"]

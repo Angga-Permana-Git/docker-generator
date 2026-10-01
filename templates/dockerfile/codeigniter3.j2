@@ -1,0 +1,39 @@
+# ============================================================
+# Dockerfile - CodeIgniter 3 (PHP-FPM) - {{ app_name }}
+# Security hardened: non-root user, pinned versions, tini
+# ============================================================
+
+FROM php:8.1-fpm-alpine
+
+# tini + ekstensi PHP dalam SATU layer (hemat layer, layer caching optimal)
+RUN apk add --no-cache tini oniguruma-dev \
+    && docker-php-ext-install \
+        pdo_mysql pdo_pgsql \
+        mbstring mysqli \
+    && apk del oniguruma-dev
+
+WORKDIR /var/www/html
+
+# Copy source code
+COPY . .
+
+# Create writable logs directory
+RUN mkdir -p application/logs && \
+    chmod -R 775 application/logs
+
+# Create non-root user (UID 1001)
+RUN addgroup -g 1001 -S appgroup && \
+    adduser -u 1001 -S appuser -G appgroup
+
+# Set proper permissions
+RUN chown -R appuser:appgroup /var/www/html && \
+    chmod -R 750 /var/www/html && \
+    chmod -R 770 application/logs
+
+# Switch to non-root user
+USER appuser
+
+EXPOSE {{ port }}
+
+ENTRYPOINT ["/sbin/tini", "--"]
+CMD ["php-fpm"]

@@ -1,0 +1,162 @@
+# ============================================================
+# Docker Compose - {{ app_name }} (App + Proxy + DB, full stack)
+# Security hardened: DB internal only, read-only FS, limits
+# ============================================================
+
+name: {{ app_name_safe }}
+
+networks:
+  frontend:
+    driver: bridge
+  backend:
+    driver: bridge
+    internal: true
+
+services:
+  db:
+    image: {{ db_image }}
+    restart: unless-stopped
+    environment:
+{% if db_type in ['postgresql'] %}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_DATABASE}
+    command:
+      - postgres
+      - -c
+      - ssl=on
+      - -c
+      - log_connections=on
+      - -c
+      - log_disconnections=on
+{% elif db_type in ['mysql', 'mariadb'] %}
+      - MYSQL_USER=${DB_USER}
+      - MYSQL_PASSWORD=${DB_PASSWORD}
+      - MYSQL_DATABASE=${DB_DATABASE}
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
+{% endif %}
+    volumes:
+{% if db_type in ['mysql', 'mariadb'] %}
+      - dbdata:/var/lib/mysql
+{% else %}
+      - dbdata:/var/lib/postgresql/data
+{% endif %}
+    networks:
+      - backend
+    expose:
+      - "{{ db_port }}"
+{% if db_type in ['mysql', 'mariadb'] %}
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "${DB_USER}", "-p${DB_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+{% elif db_type in ['postgresql'] %}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_DATABASE}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+{% endif %}
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1G
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - APP_ENV=production
+      - APP_NAME={{ app_name }}
+{% if enable_sso %}
+{% for key, value in sso_env.items() %}
+{% set sso_ref = '${' + key + '}' %}
+      - {{ key }}={{ sso_ref }}
+{% endfor %}
+{% endif %}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - frontend
+      - backend
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,size=64m
+{% if framework in ['laravel', 'codeigniter4', 'codeigniter3'] %}
+      - /var/www/html/storage/framework/cache:noexec,nosuid,size=100m
+{% endif %}
+    volumes:
+{% if framework in ['laravel', 'codeigniter4', 'codeigniter3'] %}
+      - app-storage:/var/www/html/storage
+{% endif %}
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  proxy:
+    image: httpd:2.4-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./apache/app.conf.template:/usr/local/apache2/conf/extra/app.conf:ro
+      - ./apache/entrypoint.sh:/usr/local/apache2/entrypoint.sh:ro
+      - ./ssl:/usr/local/apache2/conf/ssl:ro
+    entrypoint: ["/bin/sh", "/usr/local/apache2/entrypoint.sh"]
+    depends_on:
+      - app
+    networks:
+      - frontend
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  dbdata:
+{% if framework in ['laravel', 'codeigniter4', 'codeigniter3'] %}
+  app-storage:
+{% endif %}

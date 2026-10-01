@@ -1,0 +1,87 @@
+# ============================================================
+# Docker Compose - {{ app_name }} (App + Proxy, DB eksternal)
+# Security hardened: read-only FS, resource limits, network seg
+# ============================================================
+
+name: {{ app_name_safe }}
+
+networks:
+  frontend:
+    driver: bridge
+  backend:
+    driver: bridge
+    internal: true
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    networks:
+      - frontend
+      - backend
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,size=64m
+{% if framework in ['laravel', 'codeigniter4', 'codeigniter3'] %}
+      - /var/www/html/storage/framework/cache:noexec,nosuid,size=100m
+{% endif %}
+    volumes:
+{% if framework in ['laravel', 'codeigniter4', 'codeigniter3'] %}
+      - app-storage:/var/www/html/storage
+{% endif %}
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  proxy:
+    image: httpd:2.4-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./apache/app.conf.template:/usr/local/apache2/conf/extra/app.conf:ro
+      - ./apache/entrypoint.sh:/usr/local/apache2/entrypoint.sh:ro
+      - ./ssl:/usr/local/apache2/conf/ssl:ro
+    entrypoint: ["/bin/sh", "/usr/local/apache2/entrypoint.sh"]
+    depends_on:
+      - app
+    networks:
+      - frontend
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+{% if framework in ['laravel', 'codeigniter4', 'codeigniter3'] %}
+
+volumes:
+  app-storage:
+{% endif %}

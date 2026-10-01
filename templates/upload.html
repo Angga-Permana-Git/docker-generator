@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Docker Stack Generator</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Docker Stack Generator</h1>
+            <p class="subtitle">Upload source code, dapatkan Docker stack production-ready dengan security hardening, SSO, dan AI optimization.</p>
+        </header>
+
+        <section class="card">
+            <h2>Upload Project (ZIP)</h2>
+            <form id="uploadForm">
+                <div class="dropzone" id="dropzone">
+                    <p>Drag &amp; drop file ZIP / TAR / TAR.GZ di sini, atau klik untuk memilih</p>
+                    <input type="file" id="fileInput" name="file" accept=".zip,.tar,.tar.gz,.tgz" required>
+                </div>
+                <div class="fileinfo" id="fileInfo" style="display:none"></div>
+                <button type="submit" id="submitBtn" disabled>Detect Framework</button>
+            </form>
+        </section>
+
+        <section class="card" id="loadingCard" style="display:none">
+            <h2>Menganalisis...</h2>
+            <div class="spinner"></div>
+            <p>Mendeteksi framework dan dependencies...</p>
+        </section>
+
+        <footer>
+            <p>Tool &bull; v1.0</p>
+        </footer>
+    </div>
+
+    <script src="/static/upload.js"></script>
+</body>
+</html>

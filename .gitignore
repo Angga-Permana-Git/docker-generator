@@ -1,0 +1,29 @@
+# PRD / dokumentasi (tidak dipublikasikan)
+PRDDockerGenerator.md
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+
+# Runtime (jangan di-commit)
+uploads/
+output/
+*.log
+
+# Environment
+.env
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Test artifacts
+_test*.py
+_e2e*.py

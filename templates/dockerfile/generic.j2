@@ -1,0 +1,30 @@
+# ============================================================
+# Dockerfile - Generic (fallback) - {{ app_name }}
+# Security hardened: non-root user, pinned versions, tini
+# ============================================================
+
+FROM alpine:3.19
+
+# Install tini as init system
+RUN apk add --no-cache tini bash
+
+WORKDIR /app
+
+# Copy source code
+COPY . .
+
+# Create non-root user (UID 1001)
+RUN addgroup -g 1001 -S appgroup && \
+    adduser -u 1001 -S appuser -G appgroup
+
+# Set proper permissions
+RUN chown -R appuser:appgroup /app && \
+    chmod -R 750 /app
+
+# Switch to non-root user
+USER appuser
+
+EXPOSE {{ port }}
+
+ENTRYPOINT ["/sbin/tini", "--"]
+CMD ["sh"]

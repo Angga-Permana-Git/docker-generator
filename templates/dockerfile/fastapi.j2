@@ -1,0 +1,39 @@
+# ============================================================
+# Dockerfile - FastAPI (Uvicorn) - {{ app_name }}
+# Security hardened: non-root user, pinned versions, tini
+# ============================================================
+
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+# Install tini (init system) + build deps dalam SATU layer
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        tini gcc libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy dependency files first for layer caching
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy source code
+COPY . .
+
+# Create non-root user (UID 1001)
+RUN addgroup --gid 1001 appgroup && \
+    adduser --uid 1001 --ingroup appgroup --disabled-password appuser
+
+# Set proper permissions
+RUN chown -R appuser:appgroup /app && \
+    chmod -R 750 /app
+
+# Switch to non-root user
+USER appuser
+
+EXPOSE {{ port }}
+
+ENTRYPOINT ["/usr/bin/tini", "--"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "{{ port }}"]

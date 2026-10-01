@@ -1,0 +1,30 @@
+#!/bin/sh
+set -e
+
+# ============================================================
+# Apache entrypoint - {{ app_name }}
+# STEP 1: Enable required modules
+# ============================================================
+sed -i '/^#LoadModule proxy_module/s/^#//' /usr/local/apache2/conf/httpd.conf
+sed -i '/^#LoadModule proxy_http_module/s/^#//' /usr/local/apache2/conf/httpd.conf
+sed -i '/^#LoadModule ssl_module/s/^#//' /usr/local/apache2/conf/httpd.conf
+sed -i '/^#LoadModule rewrite_module/s/^#//' /usr/local/apache2/conf/httpd.conf
+sed -i '/^#LoadModule headers_module/s/^#//' /usr/local/apache2/conf/httpd.conf
+sed -i '/^#LoadModule socache_shmcb_module/s/^#//' /usr/local/apache2/conf/httpd.conf
+
+# ============================================================
+# STEP 2: Include virtual host config
+# ============================================================
+if ! grep -q "conf/extra/app.conf" /usr/local/apache2/conf/httpd.conf; then
+    echo "Include conf/extra/app.conf" >> /usr/local/apache2/conf/httpd.conf
+fi
+
+# ============================================================
+# STEP 3: Set permissions
+# ============================================================
+chmod 644 /usr/local/apache2/conf/extra/app.conf 2>/dev/null || true
+
+# ============================================================
+# STEP 4: Start Apache
+# ============================================================
+exec httpd-foreground

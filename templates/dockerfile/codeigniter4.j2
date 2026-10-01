@@ -1,0 +1,55 @@
+# ============================================================
+# Dockerfile - CodeIgniter 4 (PHP-FPM) - {{ app_name }}
+# Security hardened: non-root user, pinned versions, tini
+# ============================================================
+
+FROM php:8.3-fpm-alpine
+
+# tini (init system) + sistem deps + ekstensi PHP dalam SATU layer
+RUN apk add --no-cache \
+        tini \
+        libzip-dev icu-dev oniguruma-dev \
+    && docker-php-ext-install \
+        pdo_mysql pdo_pgsql \
+        zip intl bcmath opcache \
+    && apk del libzip-dev icu-dev oniguruma-dev
+
+# Install composer
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+WORKDIR /var/www/html
+
+# Copy dependency files first for layer caching
+COPY composer.json composer.lock* ./
+
+# --ignore-platform-req menghindari gagal karena versi PHP/ext host
+RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist \
+        --ignore-platform-req=php \
+        --ignore-platform-req=ext-intl \
+    && rm -rf ~/.composer/cache
+
+# Copy source code
+COPY . .
+
+RUN composer dump-autoload --no-dev --optimize
+
+# Create writable directories
+RUN mkdir -p writable/{cache,logs,session} && \
+    chmod -R 775 writable
+
+# Create non-root user (UID 1001)
+RUN addgroup -g 1001 -S appgroup && \
+    adduser -u 1001 -S appuser -G appgroup
+
+# Set proper permissions
+RUN chown -R appuser:appgroup /var/www/html && \
+    chmod -R 750 /var/www/html && \
+    chmod -R 770 writable
+
+# Switch to non-root user
+USER appuser
+
+EXPOSE {{ port }}
+
+ENTRYPOINT ["/sbin/tini", "--"]
+CMD ["php-fpm"]

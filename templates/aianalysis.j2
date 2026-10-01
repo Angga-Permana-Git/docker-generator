@@ -1,0 +1,35 @@
+# Analisis AI - {{ app_name }}
+
+Analisis ini dihasilkan otomatis oleh AI berdasarkan source code project.
+
+{% if ai_result and ai_result.get('_note') %}
+> Catatan: {{ ai_result['_note'] }}
+{% endif %}
+
+## Dockerfile Optimizations
+{% for opt in ai_result.get('dockerfile_optimizations', []) %}
+- {{ opt }}
+{% else %}
+- Tidak ada rekomendasi khusus.
+{% endfor %}
+
+## Environment Variables
+{% for var in ai_result.get('environment_variables', []) %}
+- **{{ var.name }}** = `{{ var.value }}` — {{ var.get('description', '') }}
+{% else %}
+- Tidak ada rekomendasi khusus.
+{% endfor %}
+
+## Performance Suggestions
+{% for s in ai_result.get('performance_suggestions', []) %}
+- {{ s }}
+{% else %}
+- Tidak ada rekomendasi khusus.
+{% endfor %}
+
+## Security Recommendations
+{% for r in ai_result.get('security_recommendations', []) %}
+- {{ r }}
+{% else %}
+- Tidak ada rekomendasi khusus.
+{% endfor %}

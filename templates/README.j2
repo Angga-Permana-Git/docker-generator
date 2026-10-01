@@ -1,0 +1,123 @@
+# {{ app_name }} - Docker Stack
+
+Docker stack production-ready untuk **{{ app_name }}** dengan security hardening, reverse proxy Apache, dan{% if enable_sso %} SSO ({{ sso_provider_label }}){% else %} tanpa SSO{% endif %}.
+
+Dibuat dengan Docker Stack Generator.
+
+## Struktur
+
+```
+{{ app_name_safe }}-dockerstack/
+├── Dockerfile
+├── docker-compose.app.yaml        (App + Proxy, DB eksternal)
+├── docker-compose.fulldb.yaml     (App + Proxy + DB lokal)
+├── .env.example.app
+├── .env.example.fulldb
+├── .dockerignore                  (.env & artifact tidak di-bake ke image)
+├── apache/
+│   ├── app.conf.template
+│   └── entrypoint.sh
+├── ssl/                           (Buat folder ini untuk sertifikat)
+└── README.md
+```
+
+> **PENTING soal `.env`:** File `.env` **tidak di-bake ke dalam image** (ada di `.dockerignore`) demi keamanan. Variabel environment dimasukkan ke container lewat `env_file: - .env` di docker-compose. Pastikan kamu sudah `cp .env.example.app .env` (atau `.fulldb`) **di folder yang sama dengan docker-compose** sebelum `up`.
+
+## 1. SSL Setup (Wajib sebelum deploy)
+
+Apache membutuhkan file sertifikat SSL agar bisa berjalan di port 443.
+
+**Opsi A: Development (Self-Signed Certificate)**
+
+Jalankan perintah ini di root folder project:
+```bash
+mkdir -p ssl
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+  -keyout ssl/cert.key -out ssl/cert.crt \
+  -subj "/CN={{ domain }}"
+```
+
+**Opsi B: Production (Let's Encrypt / Certbot)**
+
+Jika menggunakan Certbot di host server, ubah volume proxy di docker-compose:
+```yaml
+volumes:
+  - /etc/letsencrypt/live/{{ domain }}/fullchain.pem:/usr/local/apache2/conf/ssl/cert.crt:ro
+  - /etc/letsencrypt/live/{{ domain }}/privkey.pem:/usr/local/apache2/conf/ssl/cert.key:ro
+```
+
+## 2. Quick Start
+
+### Mode 1: App only (DB eksternal)
+```bash
+cp .env.example.app .env
+# Edit file .env dan isi kredensial database eksternal serta SSO
+docker compose -f docker-compose.app.yaml up -d --build
+```
+
+### Mode 2: Full stack (DB lokal)
+```bash
+cp .env.example.fulldb .env
+# Edit file .env (pastikan DB_HOST=db)
+docker compose -f docker-compose.fulldb.yaml up -d --build
+```
+
+## 3. Environment Variables
+
+Salin template `.env` sesuai mode, lalu isi nilai berikut:
+
+| Variable | Deskripsi |
+|----------|-----------|
+| `APP_ENV` | Mode aplikasi (`production`) |
+| `APP_DEBUG` | Debug mode (`false` di production) |
+| `APP_URL` | URL publik aplikasi |
+| `DB_HOST` | Host database (`db` jika lokal) |
+| `DB_PORT` | Port database |
+| `DB_DATABASE` | Nama database |
+| `DB_USER` | User database |
+| `DB_PASSWORD` | Password database |
+{% if enable_sso %}
+{% if sso_provider == 'genericpmk' %}
+| `SSO_URL` | URL IdP SSO (mis. `https://sso.example.com`) |
+| `SSO_LOGIN_URL` | Path login SSO |
+| `SSO_ORIGIN` | Origin IdP SSO |
+| `SSO_CLIENT_KEY` | Client key / client id SSO |
+| `SSO_CLIENT_SECRET` | Client secret SSO |
+| `SSO_TLS_VERIFY` | Verifikasi TLS (default `false`) |
+| `SERVER_HOST` / `COOKIE_DOMAIN` | Domain server & cookie |
+{% else %}
+| `SSO_CLIENT_ID` | Client ID SSO |
+| `SSO_CLIENT_SECRET` | Client Secret SSO |
+| `SSO_ISSUER_URL` | Issuer URL SSO |
+{% endif %}
+{% endif %}
+
+## 4. Security Checklist
+- [ ] Ganti semua nilai `change-me` pada `.env`
+- [ ] Pastikan file `.env` tidak ter-commit ke Git
+- [ ] Pastikan `APP_DEBUG=false` di production
+- [ ] Akses database hanya melalui network internal (`backend`)
+- [ ] Buat sertifikat SSL sebelum deploy (lihat section 1)
+
+## 5. Troubleshooting
+
+**App crash / error 502 Bad Gateway**
+1. Cek log aplikasi: `docker compose logs app`
+2. Pastikan database sudah ready. Stack ini menggunakan `healthcheck`, jadi app akan menunggu DB siap sebelum start. Jika tetap gagal, cek kredensial di `.env`.
+
+**Permission denied di folder `storage`**
+Pastikan volume `app-storage` ter-mount dengan benar. Dockerfile sudah mengatur ownership ke `www-data`, dan mount volume akan mempertahankan permission tersebut.
+
+**.env tidak ter-load**
+Pastikan file `.env` ada dan satu folder dengan file docker-compose.
+
+**SSL Error di Browser**
+Jika menggunakan sertifikat self-signed (development), browser akan menampilkan peringatan "Your connection is not private". Ini normal. Klik "Advanced" -> "Proceed to site".
+
+## 6. Verifikasi Build
+
+```bash
+docker build --no-cache -t test-build .
+docker run --rm test-build whoami   # Harus output appuser / www-data (bukan root)
+docker compose config
+```

@@ -1,0 +1,52 @@
+# ============================================================
+# Dockerfile - Next.js (multistage build) - {{ app_name }}
+# Security hardened: non-root user, pinned versions, tini
+# ============================================================
+
+# ---------- STAGE 1: BUILD ----------
+FROM node:20-alpine AS build
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci
+
+COPY . .
+
+# Next.js needs write access to .next during build
+RUN npm run build
+
+# ---------- STAGE 2: RUNTIME ----------
+FROM node:20-alpine
+
+# Install tini as init system (zombie reaping)
+RUN apk add --no-cache tini
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+# Copy build output
+COPY --from=build /app/.next ./.next
+COPY --from=build /app/public ./public
+COPY --from=build /app/package*.json ./
+COPY --from=build /app/next.config.* ./
+
+# Install only production dependencies
+RUN npm ci --omit=dev && rm -rf ~/.npm
+
+# Create non-root user (UID 1001)
+RUN addgroup -g 1001 -S appgroup && \
+    adduser -u 1001 -S appuser -G appgroup
+
+# Set proper permissions
+RUN chown -R appuser:appgroup /app && \
+    chmod -R 750 /app
+
+# Switch to non-root user
+USER appuser
+
+EXPOSE {{ port }}
+
+# Use tini as entrypoint
+ENTRYPOINT ["/sbin/tini", "--"]
+CMD ["npm", "start"]
