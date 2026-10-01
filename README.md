@@ -1,7 +1,7 @@
 # Docker Stack Generator
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.0-blue.svg)]()
+[![Version](https://img.shields.io/badge/version-1.0-blue.svg)](https://github.com/Angga-Permana-Git/docker-generator)
 
 Web application untuk mengotomatisasi pembuatan **Docker stack production-ready** — upload source code (ZIP/TAR), dapatkan Dockerfile + docker-compose + config Apache + SSO + README dalam hitungan detik.
 
@@ -10,12 +10,14 @@ Web application untuk mengotomatisasi pembuatan **Docker stack production-ready*
 - **Security hardening** (non-root user, read-only FS, resource limits, network segmentation, security headers)
 - **Dual mode output** (app-only untuk DB eksternal, fullstack untuk DB lokal)
 - **SSO integration** (Keycloak, Auth0, Azure AD, Generic OIDC, Generic OIDC Custom)
-- **AI enhancement** (opsional — analisis source code via OpenAI API)
+- **AI enhancement** (opsional — analisis source code via OpenAI / Anthropic API)
 - **Reverse proxy Apache** (SSL, security headers, rate limiting)
 
 ---
 
-## Prasyarat (Windows)
+## Prasyarat
+
+> Contoh perintah di bawah memakai **PowerShell (Windows)**. Untuk **Linux/macOS**: gunakan `python3`/`pip3`, clone ke folder mana saja (mis. `~/projects`), dan perintah shell yang sama.
 
 ### 1. Python 3.11 atau lebih baru
 
@@ -54,9 +56,9 @@ Unduh dari [docker.com](https://www.docker.com/products/docker-desktop/).
 |----------|--------|----------|
 | Python 3.11+ | ✅ Ya | Menjalankan aplikasi |
 | pip | ✅ Ya | Install dependency |
-| Git | ✅ Ya | Clone & push repository |
+| Git | ✅ Ya | Clone repository |
 | Docker Desktop | ❌ Opsional | Testing output stack |
-| OpenAI API Key | ❌ Opsional | Fitur AI enhancement |
+| OpenAI / Anthropic API Key | ❌ Opsional | Fitur AI enhancement |
 
 ---
 
@@ -64,17 +66,43 @@ Unduh dari [docker.com](https://www.docker.com/products/docker-desktop/).
 
 ### 1. Clone repository
 
+Clone ke folder mana saja (di sini contohnya folder home):
+
 ```powershell
-cd C:\xampp\htdocs
+cd ~
 git clone https://github.com/Angga-Permana-Git/docker-generator.git docker-generator
 cd docker-generator
 ```
 
+> **Linux/macOS:**
+> ```bash
+> cd ~
+> git clone https://github.com/Angga-Permana-Git/docker-generator.git docker-generator
+> cd docker-generator
+> ```
+
 ### 2. Install dependency Python
 
+Disarankan memakai **virtual environment** agar dependency tidak bercampur dengan paket sistem:
+
 ```powershell
+python -m venv venv
+.\venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 ```
+
+> **Linux/macOS:**
+> ```bash
+> python3 -m venv venv
+> source venv/bin/activate
+> pip install -r requirements.txt
+> ```
+
+> **Jika aktivasi venv diblokir (Windows):** jalankan dulu
+> `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`
+> lalu ulangi `.\venv\Scripts\Activate.ps1`.
+
+> **Jika tidak mau pakai venv:** `pip install -r requirements.txt` (atau `pip install --user -r requirements.txt`).
 
 Dependency yang terinstall:
 - `fastapi` — web framework
@@ -86,6 +114,8 @@ Dependency yang terinstall:
 
 ### 3. Jalankan aplikasi
 
+Pastikan virtual environment masih aktif (prompt diawali `(venv)`), lalu:
+
 ```powershell
 python -m uvicorn main:app --host 0.0.0.0 --port 8000
 ```
@@ -96,6 +126,8 @@ Buka browser: **http://localhost:8000**
 > ```powershell
 > python -m uvicorn main:app --reload --port 8000
 > ```
+>
+> **Linux/macOS:** gunakan `python3 -m uvicorn ...` jika perintah `python` tidak dikenali.
 
 ---
 
@@ -110,7 +142,7 @@ Buka browser: **http://localhost:8000**
    - `.tar.gz` / `.tgz`
 3. Klik **"Detect Framework"**
 
-> **Catatan:** Maksimal 100MB. Jika project punya wrapper folder (misal `myproject/`), sistem otomatis handle.
+> **Catatan:** Maksimal 100MB. Jika project punya wrapper folder (misal `myproject/`), sistem otomatis handle. Upload bersifat sementara — **selesaikan proses dalam 1 jam**, sesi lebih tua otomatis dibersihkan.
 
 ### Langkah 2 — Konfirmasi & Konfigurasi
 
@@ -122,9 +154,9 @@ Setelah deteksi selesai, halaman konfigurasi menampilkan:
 | **App Name** | Nama aplikasi (untuk container & file) |
 | **Domain** | Domain production (mis. `myapp.example.com`) |
 | **Port** | Port aplikasi (auto-sesuai framework) |
-| **Database** | None / PostgreSQL / MySQL / MariaDB |
-| **SSO** | Aktifkan & pilih provider (opsional) |
-| **AI Analysis** | Centang + isi OpenAI API Key (opsional) |
+| **Database Type** | None / PostgreSQL / MySQL / MariaDB |
+| **Enable SSO** | Centang + pilih provider (opsional) |
+| **Enable AI Analysis** | Centang + pilih provider (OpenAI / Anthropic) + isi API key (opsional) |
 
 **Pilihan SSO Provider:**
 
@@ -144,7 +176,7 @@ Setelah deteksi selesai, halaman konfigurasi menampilkan:
 
 ### Langkah 4 — Deploy
 
-Ekstrak ZIP, lalu ikuti instruksi di `README.md` di dalamnya:
+Ekstrak ZIP, lalu ikuti instruksi lengkap di `README.md` di dalam ZIP tersebut. Ringkasan perintah (jalankan di **Linux server / WSL / Git Bash** — bukan PowerShell, karena perintahnya bergaya Linux):
 
 ```bash
 # 1. Buat SSL certificate (development)
@@ -191,7 +223,7 @@ docker-generator/
 ├── main.py               # FastAPI routing & upload handler
 ├── detector.py           # Framework detection logic
 ├── generator.py          # Stack generation & ZIP creation
-├── ai_enhancer.py        # OpenAI integration
+├── ai_enhancer.py        # AI integration (OpenAI / Anthropic)
 ├── security_hardener.py  # SSO configuration
 ├── templates/
 │   ├── upload.html       # Halaman upload
@@ -204,6 +236,7 @@ docker-generator/
 │   └── apache/           # Reverse proxy templates
 ├── static/               # CSS & JavaScript
 ├── requirements.txt
+├── LICENSE
 ├── .gitignore
 └── README.md
 ```
@@ -214,10 +247,14 @@ docker-generator/
 
 | Masalah | Solusi |
 |---------|--------|
-| `python` tidak dikenali | Install Python + centang "Add to PATH" |
+| `python` tidak dikenali | Install Python + centang "Add to PATH", atau pakai `python3` |
+| `ModuleNotFoundError: No module named 'fastapi'` | Virtual environment belum aktif / belum install dependency — aktifkan `venv` lalu `pip install -r requirements.txt` |
+| Aktivasi `venv` diblokir (Windows) | `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass` lalu aktifkan ulang |
 | `pip install` gagal | Cek koneksi internet, coba `pip install --user -r requirements.txt` |
+| `error: externally-managed-environment` | Pakai virtual environment (lihat langkah Install dependency) |
 | Port 8000 sudah dipakai | Ganti port: `--port 8001` |
 | Upload gagal | Pastikan format `.zip`/`.tar`/`.tar.gz`, ukuran < 100MB |
+| `Session expired or invalid` | Upload sudah lewat 1 jam — upload ulang file-nya |
 | Framework terdeteksi salah | Bisa diubah manual di halaman konfigurasi |
 | AI tidak jalan | Cek API key, atau matikan centang AI (tetap generate normal) |
 
@@ -234,6 +271,7 @@ python -m uvicorn main:app --reload --port 8000
 ```powershell
 python -m py_compile main.py detector.py generator.py ai_enhancer.py security_hardener.py
 ```
+Perintah di atas hanya memeriksa sintaks seluruh modul (tidak error = OK).
 
 ---
 
